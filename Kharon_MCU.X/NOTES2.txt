@@ -1,0 +1,110 @@
+4/3
+changelog: 
+
+
+ADDED portal open/close functionality. 
+
+	anytime a portal collapses, currentportal is set to -1. 
+	inside timer 1 interrupt, if currentportal is not -1, then it counts down, if current portal is -1, it counts up. 
+	if it's "on cooldown", and it reaches the variable for max timerval, it will be off cooldown, by currentportal being set to 0 for no portal open when it is done counting up to zero. 
+	also, for any portal to open, currentportal must not be -1. 
+	
+ADDED bluetooth packet handling. 
+
+	a second receive buffer was made, U2RX. Th
+	is is 6 bytes wide, and if it ever contains 3c at the beginning and a valid checksum, 
+	the data will be parsed inside the interrupt function. because uart is at 38400 baud, we have 7372800/38400/2 = 96 instructions between receving each byte, 
+	so there shouldnt be any interrupt overlap. 
+	If there is, this pic has interrupt nesting enabled, and a second call of u2rx interrupt will not tamper with the parsing of the bluetooth packet. 
+	
+ADDED timer debugging. 
+	This allows me to see how long a function takes by analyzing the number of times timer 4 increments the variable TMR4
+	
+	
+//        int t1 = TMR4; //start a timer. Timer 4 is configured to increment TMR4 every 1/100 of a second
+//        sprintf(tempstring,"poll_ADC took '%i'/100 seconds to complete.\r\n",(TMR4-t1)); //compute time the fcn took      
+//        UART_SEND(tempstring);
+
+FUTURE: 
+	1) IR packet handling. 
+	2) IR/bluetooth packet synchronozation and testing with piu. 
+	3) update portal functions to support new IR/bluetooth stuff. 
+	4) find a way to continuously update the RGBs for smooth visuals. 
+	5) program some animations 
+	6) tweak sound effects and timing
+	
+4/4
+changelog: 
+
+ADDED Ir packet handling 
+
+	changed austins packet handling in ircomplete. I made his UID a global, and moved the declaration of that global into 
+	the top of main.
+	the way he was handling a spell input was wrong according to our project description, but not his fault because it was
+	very cryptic and i had to do some reasearch to find out about what spells actually are and that most of them are 
+	really unused.
+	spell packets are now defined when the portal opens in a global, and austin's code simply reads that variable 
+	and sends the contents. (spells are only stun, damage, heal.)
+	
+	it looked like he had not put the direction handler in his code, so i just did it for him real quick. 
+	it's in charliespell() 
+	the old way is in austinspell() 
+	i'm assuming austin named his that way because he was handling the direction IR packets were being sent based on spell, 
+	instead of portal opened. 
+	
+	now the direction that IRs need to fire will be calculated upon calling austin's merge function, and use the current portal
+	value instead of the cryptic 'spell' value that we pass
+	
+	
+	IN SHORT ON IR PACKET HANDLING: austin's code still sends IR as normal, but WHAT it sends is handled elsewhere, and in functions
+	that i've added to his code. Particularly, WHAT is sent is determined upon the portal call, and the direction is determined inside of IRdirection();, which is called inside of merge in place of austinSpell.
+	
+ADDED IR/bluetooth packet synchronozation	
+
+	basically, whenever timer 3 interrupts, a bluetooth packet is sent with the UIDcount, then the ir packet is called. 
+	pretty simple. I just had to declare globals and use them inside the timer 3 interrupt.
+	
+	
+ADDED portal ir/bluetooth specifics.
+	
+	controlling the time between IR packets:
+	
+		basically, i just defined the length between timer 3 interrupts by setting TMR3CNT, which is a variable that is incremented every time timer3 interrupts, but none of the code executes unless TMR3CNT is 0, otherwise 1 is subtracted from TMR3CNT. This allows me to have timer3 interrupt ever 1/10th of a second, and I can control the period, in deciseconds, that timer 3 interrupts, by setting TMR3CNT to the number of 1/10th seconds per period. 
+	
+	spell handling: 
+		spells arent very well defined by the mage system ,but basically for us, depending on which portal is open, we either use a stun, damage, or healing spell. so, at the end of the day, we only ever use 3 of the 27 spells. 
+		
+		the spell type is defined upon the portal opening inside of portals.h, this way, IR packets read from currentSpell, and use that as the data to be sent, instead of trying to figure that out internally. 
+		
+	spell strength handling: 
+		
+		again, spell strength is handled when portal is opened. IR packets read from the global varialbe that is set when the portal is opened. 
+	
+	
+	
+	
+	
+	
+	NEED TO TEST: 
+	
+	
+	bluetooth heartbeat success... 
+	
+	bluetooth packet ack sent back? 
+	
+	Does portal have cooldown? look for bugs?
+	
+	if i set a pin to INPUT, does it still activate the mosfet? 
+	
+	oscope the OSC2 pin
+	
+	IR still sending valid packets?
+	
+	is IR synchronized with BT?
+	
+	
+	FUTURE: 	
+	4) find a way to continuously update the RGBs for smooth visuals. 
+	5) program some animations 
+	6) tweak sound effects and timing
+	figure out whether or not the bluetooth is actually connected and do defensive programming for when it's not.

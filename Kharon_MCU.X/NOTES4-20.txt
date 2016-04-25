@@ -1,0 +1,6 @@
+CHECK THE FOLLOWING:
+
+1) somoplay function 
+2) portal animations (check them all)
+3) portal collapse /portal open/ portal ready sounds
+4) bluetooth connect confirmation

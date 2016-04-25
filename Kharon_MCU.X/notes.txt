@@ -1,0 +1,127 @@
+NOTES
+
+
+SIZE OF U1TXREG
+///////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////
+I am checking to see how big the U1TXREG is by writing two bytes to it at one time
+
+if this is too big, i'll only see one byte on my bluetooth. 
+
+i.e 
+++++++++++++++++++++++++
+
+        U1TXREG = 0x6677;
+        U1TXREG = 0x0a;
+        U1TXREG = 0x0d;
+++++++++++++++++++++++++
+
+setting txreg to 6677 writes the characters f and w respectively. 
+
+i know setting 0a and 0d will do newline and carriage return, so that bluetooth terminal will show me. 
+
+I suspect that i'll only see an f. 
+
+
+I was correct in assumming that only one character would be written; however, I was wrong that I
+would only see an F. I only saw w's, and that's because the register is empty from bits 8-15, and I wrote
+f to those bits. w was written to bits 0-7, and thus, w was transmitted. 
+///////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////
+
+
+
+///////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////
+I need to know how big U1RXREG is. U1TXREG size is two bytes, but only bits 0-7 mean anything. 
+
+
+I'll send one character through the bluetooth at a time, and in the interrupt, i'll store that character 
+in a char variable. I hope C doesnt throw an error
+
+C didnt throw an error.
+	
+	char temp;
+    temp = U1RXREG%256; //temp now has one character in it. 
+    
+this above code was fine. I need to test this to make sure that i'm getting one character in temp at a time. 
+i'm putting temp into the sendbuffer, so that outside the interrupt UARTSEND will shoot it back to me. 
+
+If i get back what i sent, i'll know that one character works.
+Then i'll use two characters, and I expect that i'll get both back, because this code is fast. 
+
+__
+while sending two chars, I did get the character back. I got the character back 3 times before 
+i got the second character back, though, indicating that the interrupt is executing 3 times before 
+the second character is even seen. 
+
+The receive buffer seems like it will not clear. 
+I need to figure out how to clear the receive buffer. 
+
+U1RXREG = 0; 
+
+does not work. it still runs away. 
+
+
+
+I'm losing it. If I write 
+U1TXREG = U1RXREG; 
+then the register properly clears itself... i know, because the interrupt doesnt keep getting called. 
+
+so i'm going to run with that, and just assign a short to U1RXREG and see if the same thing happens. 
+
+ok cool, assigning U1RXREG to a short apparantly clears the receive buffer. 
+
+at this point, i dont care how it works, as long as it does. 
+
+so here's what i need: 
+
+1) everything that gets sent through uart needs to be added to a receive buffer 
+2) i need to be able to analyze that receive buffer to detect specifics. 
+	i.e. if the first three characters are kD$, then i know i'm sending a debug command
+3) that buffer needs to be emptied after awhile 
+
+
+===================================
+I got it working with just storing the rxreg in a short.... ok. whatever. 
+
+now analyzing the inputs: 
+i know a string must have a null char at the end of it, so whenever I clear the receive buffer, i'll just
+set it to "\0" instead of "". 
+
+question: if i set empty string (i.e. "") to my UARTrbuff, does this include a null character? 
+
+yes it does. and if you write a character to the strlen(string) of a string called string,
+the null character is still after whatever you write. 
+
+
+question: if i set the nth character in a char array to the null character, will it be as good as 
+truncating the whole string at that point?
+
+yes. i did this in putty. totally acts like the rest of that string isnt there because null is at nth place. 
+
+
+
+
+
+
+
+I might need something like this:
+sprintf(temp,"%c%c",((U1RXREG/256)%256),(U1RXREG%256));//bitshift, mask by ff
+///////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////
+
+
+
+
+///////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////
+I also need to know how to clear U1RXREG so that the interrupt only occurs once per transmitted character. 
+
+///////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////
+\
+
+
+3-21 3pm 
+
